@@ -67,7 +67,7 @@
 
 ---
 
-## Phase 5: User Story 3 — Query Error Enrichment (Priority: P3) 🎯 NEXT
+## Phase 5: User Story 3 — Query Error Enrichment (Priority: P3) ✅ COMPLETE
 
 **Goal**: When a query execution fails with an HTTP error response, the results panel displays the HTTP status code and a collapsible truncated response body alongside the human-readable error message, enabling in-VS-Code debugging without needing external tools.
 
@@ -75,11 +75,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T007 [P] [US3] Extend `QueryError` constructor in `src/services/queryService.ts` — add `readonly statusCode?: number` and `readonly responseBody?: string` properties; update constructor to `constructor(message: string, statusCode?: number, responseBody?: string)` and assign both fields (`this.statusCode = statusCode; this.responseBody = responseBody;`)
-- [ ] T008 [P] [US3] Extend `RenderErrorMessage` interface in `src/types/messages.ts` — add `statusCode?: number` and `responseBody?: string` as optional fields to the existing interface; both fields are optional for full backwards compatibility
-- [ ] T009 [US3] Add `extractHttpErrorDetails()` helper and update `executeQuery()` catch block in `src/services/queryService.ts` — helper duck-type checks `typeof err === 'object' && err !== null && 'response' in err`; if true reads `(err as {response?: {status?: number; data?: unknown}}).response?.status` (number) and `.data` (unknown); stringifies data with `JSON.stringify` fallback to `String()`, slices to 500 chars and appends `…` if truncated; updates `throw new QueryError(...)` calls that handle non-`QueryError` errors to pass `statusCode` and `responseBody` (depends on T007, same file — must run after T007)
-- [ ] T010 [P] [US3] Update `PanelManager.runQuery()` catch block in `src/webview/panelManager.ts` — when `err instanceof QueryError`, spread `statusCode: err.statusCode` and `responseBody: err.responseBody` into the `renderError` postMessage alongside `message`; for non-`QueryError` errors keep existing behaviour with no new fields (depends on T007, T008, T009)
-- [ ] T011 [P] [US3] Update `showError()` in `src/webview/resultsHtml.ts` — (1) update `case 'renderError': showError(msg.message, msg.statusCode, msg.responseBody)` call site; (2) update `showError(message, statusCode, responseBody)` signature; (3) always set `error-message` div via `textContent = message`; (4) if `statusCode` is defined, append ` · HTTP {statusCode}` label as a styled `<span>`; (5) if `responseBody` is defined, append `<details><summary>Response details</summary><pre></pre></details>` and set `pre.textContent = responseBody`; (6) add CSS `#error-message details pre { font-family: monospace; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--vscode-editor-lineHighlightBackground); margin: 4px 0 0; }`; use only `textContent`, `createElement`, `appendChild` — never `innerHTML` (depends on T008, different file from T009/T010 — can run in parallel with T010 after T008 is done)
+- [X] T007 [P] [US3] Extend `QueryError` constructor in `src/services/queryService.ts` — add `readonly statusCode?: number` and `readonly responseBody?: string` properties; update constructor to `constructor(message: string, statusCode?: number, responseBody?: string)` and assign both fields (`this.statusCode = statusCode; this.responseBody = responseBody;`)
+- [X] T008 [P] [US3] Extend `RenderErrorMessage` interface in `src/types/messages.ts` — add `statusCode?: number` and `responseBody?: string` as optional fields to the existing interface; both fields are optional for full backwards compatibility
+- [X] T009 [US3] Add `extractHttpErrorDetails()` helper and update `executeQuery()` catch block in `src/services/queryService.ts` — helper duck-type checks `typeof err === 'object' && err !== null && 'response' in err`; if true reads `(err as {response?: {status?: number; data?: unknown}}).response?.status` (number) and `.data` (unknown); stringifies data with `JSON.stringify` fallback to `String()`, slices to 500 chars and appends `…` if truncated; updates `throw new QueryError(...)` calls that handle non-`QueryError` errors to pass `statusCode` and `responseBody` (depends on T007, same file — must run after T007)
+- [X] T010 [P] [US3] Update `PanelManager.runQuery()` catch block in `src/webview/panelManager.ts` — when `err instanceof QueryError`, spread `statusCode: err.statusCode` and `responseBody: err.responseBody` into the `renderError` postMessage alongside `message`; for non-`QueryError` errors keep existing behaviour with no new fields (depends on T007, T008, T009)
+- [X] T011 [P] [US3] Update `showError()` in `src/webview/resultsHtml.ts` — (1) update `case 'renderError': showError(msg.message, msg.statusCode, msg.responseBody)` call site; (2) update `showError(message, statusCode, responseBody)` signature; (3) always set `error-message` div via `textContent = message`; (4) if `statusCode` is defined, append ` · HTTP {statusCode}` label as a styled `<span>`; (5) if `responseBody` is defined, append `<details><summary>Response details</summary><pre></pre></details>` and set `pre.textContent = responseBody`; (6) add CSS `#error-message details pre { font-family: monospace; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--vscode-editor-lineHighlightBackground); margin: 4px 0 0; }`; use only `textContent`, `createElement`, `appendChild` — never `innerHTML` (depends on T008, different file from T009/T010 — can run in parallel with T010 after T008 is done)
 
 **Checkpoint**: User Story 3 fully functional — HTTP errors show status + details, network errors show message only, all existing tests still pass.
 
@@ -91,7 +91,7 @@
 
 - [X] T012 [P] Verify error message strings match spec acceptance scenarios in `src/commands/configureCredentials.ts` and `src/services/queryService.ts`
 - [X] T013 [P] Run `npm test && npm run lint` after US1/US2 — confirmed 78/78 tests pass, webpack compiles clean
-- [ ] T014 Run `npm test && npm run lint` from repo root after US3 implementation and fix any TypeScript or lint violations introduced by the error enrichment changes
+- [X] T014 Run `npm test && npm run lint` from repo root after US3 implementation and fix any TypeScript or lint violations introduced by the error enrichment changes
 
 ---
 

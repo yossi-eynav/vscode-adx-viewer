@@ -13,9 +13,14 @@ export interface QueryResult {
 }
 
 export class QueryError extends Error {
-  constructor(message: string) {
+  readonly statusCode?: number;
+  readonly responseBody?: string;
+
+  constructor(message: string, statusCode?: number, responseBody?: string) {
     super(message);
     this.name = 'QueryError';
+    this.statusCode = statusCode;
+    this.responseBody = responseBody;
   }
 }
 
@@ -177,8 +182,34 @@ export async function executeQuery(
       throw err;
     }
     const message = err instanceof Error ? err.message : String(err);
-    throw new QueryError(`Query failed: ${message}`);
+    const { statusCode, responseBody } = extractHttpErrorDetails(err);
+    throw new QueryError(`Query failed: ${message}`, statusCode, responseBody);
   }
+}
+
+function extractHttpErrorDetails(err: unknown): { statusCode?: number; responseBody?: string } {
+  if (
+    typeof err !== 'object' ||
+    err === null ||
+    !('response' in err) ||
+    typeof (err as { response?: unknown }).response !== 'object' ||
+    (err as { response?: unknown }).response === null
+  ) {
+    return {};
+  }
+  const response = (err as { response: { status?: unknown; data?: unknown } }).response;
+  const statusCode = typeof response.status === 'number' ? response.status : undefined;
+  if (response.data === undefined || response.data === null) {
+    return { statusCode };
+  }
+  let bodyStr: string;
+  try {
+    bodyStr = JSON.stringify(response.data);
+  } catch {
+    bodyStr = String(response.data);
+  }
+  const responseBody = bodyStr.length > 500 ? bodyStr.slice(0, 500) + '…' : bodyStr;
+  return { statusCode, responseBody };
 }
 
 async function executeWithTimeout(

@@ -89,6 +89,8 @@ export class PanelManager {
       void panel.webview.postMessage({
         command: 'renderError',
         message,
+        statusCode: err instanceof QueryError ? err.statusCode : undefined,
+        responseBody: err instanceof QueryError ? err.responseBody : undefined,
       } satisfies HostToWebviewMessage);
     }
   }

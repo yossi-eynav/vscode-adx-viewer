@@ -33,6 +33,8 @@ export interface RenderEmptyMessage {
 export interface RenderErrorMessage {
   command: 'renderError';
   message: string;
+  statusCode?: number;
+  responseBody?: string;
 }
 
 export interface ReadyMessage {

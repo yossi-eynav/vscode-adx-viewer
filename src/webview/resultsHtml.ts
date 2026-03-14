@@ -33,6 +33,9 @@ export function getResultsHtml(
     #chart-container { margin-top: 24px; max-height: 320px; }
     canvas { max-width: 100%; }
     #error-message { color: var(--vscode-errorForeground); padding: 12px; }
+    #error-message .http-status { margin-left: 8px; font-weight: bold; }
+    #error-message details { margin-top: 8px; }
+    #error-message details pre { font-family: monospace; max-height: 200px; overflow-y: auto; padding: 8px; background: var(--vscode-editor-lineHighlightBackground); margin: 4px 0 0; white-space: pre-wrap; word-break: break-all; }
   </style>
 </head>
 <body>
@@ -63,7 +66,7 @@ export function getResultsHtml(
             showStatus('No results returned.');
             break;
           case 'renderError':
-            showError(msg.message);
+            showError(msg.message, msg.statusCode, msg.responseBody);
             break;
           case 'renderResults':
             renderResults(msg);
@@ -80,12 +83,35 @@ export function getResultsHtml(
         document.getElementById('truncation-notice').style.display = 'none';
       }
 
-      function showError(message) {
+      function showError(message, statusCode, responseBody) {
         document.getElementById('status').style.display = 'none';
-        document.getElementById('error-message').style.display = '';
-        document.getElementById('error-message').textContent = message;
         document.getElementById('results-table').style.display = 'none';
         document.getElementById('chart-container').style.display = 'none';
+
+        var errorDiv = document.getElementById('error-message');
+        errorDiv.style.display = '';
+        errorDiv.textContent = '';
+
+        var msgText = document.createTextNode(message);
+        errorDiv.appendChild(msgText);
+
+        if (statusCode !== undefined) {
+          var badge = document.createElement('span');
+          badge.className = 'http-status';
+          badge.textContent = '· HTTP ' + statusCode;
+          errorDiv.appendChild(badge);
+        }
+
+        if (responseBody !== undefined) {
+          var details = document.createElement('details');
+          var summary = document.createElement('summary');
+          summary.textContent = 'Response details';
+          var pre = document.createElement('pre');
+          pre.textContent = responseBody;
+          details.appendChild(summary);
+          details.appendChild(pre);
+          errorDiv.appendChild(details);
+        }
       }
 
       function renderResults(msg) {
