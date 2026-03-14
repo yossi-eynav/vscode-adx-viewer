@@ -74,7 +74,7 @@ async function collectCredentials(
   prefill?: Partial<ADXCredentials>
 ): Promise<ADXCredentials | undefined> {
   const clusterUrl = await promptStep({
-    title: 'ADX: Configure Connection (1 / 4)',
+    title: 'ADX: Configure Connection (1 / 5)',
     prompt: 'Enter your ADX cluster URL',
     placeholder: 'https://mycluster.eastus.kusto.windows.net',
     value: prefill?.clusterUrl ?? '',
@@ -87,7 +87,7 @@ async function collectCredentials(
   if (clusterUrl === undefined) return undefined;
 
   const tenantId = await promptStep({
-    title: 'ADX: Configure Connection (2 / 4)',
+    title: 'ADX: Configure Connection (2 / 5)',
     prompt: 'Enter your Azure AD Tenant ID',
     placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
     value: prefill?.tenantId ?? '',
@@ -96,7 +96,7 @@ async function collectCredentials(
   if (tenantId === undefined) return undefined;
 
   const clientId = await promptStep({
-    title: 'ADX: Configure Connection (3 / 4)',
+    title: 'ADX: Configure Connection (3 / 5)',
     prompt: 'Enter your Azure AD Client (Application) ID',
     placeholder: 'yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy',
     value: prefill?.clientId ?? '',
@@ -107,7 +107,7 @@ async function collectCredentials(
   const existingSecret = prefill?.clientSecret;
   const secretPlaceholder = existingSecret ? '***' : '';
   const rawSecret = await promptStep({
-    title: 'ADX: Configure Connection (4 / 4)',
+    title: 'ADX: Configure Connection (4 / 5)',
     prompt: 'Enter your Azure AD Client Secret',
     placeholder: 'Leave blank to keep existing secret',
     value: secretPlaceholder,
@@ -125,12 +125,21 @@ async function collectCredentials(
       ? existingSecret ?? rawSecret
       : rawSecret;
 
+  const defaultDatabase = await promptStep({
+    title: 'ADX: Configure Connection (5 / 5)',
+    prompt: 'Enter the default database name',
+    placeholder: 'MyDatabase',
+    value: prefill?.defaultDatabase ?? '',
+    validateInput: (v) => (v ? null : 'Default database is required'),
+  });
+  if (defaultDatabase === undefined) return undefined;
+
   return {
     clusterUrl,
     tenantId,
     clientId,
     clientSecret,
-    defaultDatabase: prefill?.defaultDatabase,
+    defaultDatabase,
   };
 }
 

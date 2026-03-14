@@ -48,5 +48,8 @@ export function validateCredentials(creds: Partial<ADXCredentials>): string | nu
   if (!creds.clientSecret) {
     return 'Client Secret is required';
   }
+  if (!creds.defaultDatabase) {
+    return 'Default database is required';
+  }
   return null;
 }
