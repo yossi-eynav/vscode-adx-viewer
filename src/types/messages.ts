@@ -39,9 +39,15 @@ export interface RenderErrorMessage {
   responseBody?: string;
 }
 
+export interface ActiveFilter {
+  name: string;
+  value: string;
+}
+
 export interface SetConfigMessage {
   command: 'setConfig';
   jsonColumns: string[];
+  activeFilters: ActiveFilter[];
 }
 
 export interface ReadyMessage {

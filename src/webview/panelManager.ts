@@ -3,11 +3,15 @@ import { executeQuery, QueryError, EmptyQueryError } from '../services/queryServ
 import { ADXCredentials } from '../services/credentialService';
 import { getResultsHtml } from './resultsHtml';
 import { HostToWebviewMessage } from '../types/messages';
+import { getVariables, getActiveFilters, applyVariablesToQuery } from '../services/variableService';
 
 export class PanelManager {
   private panels = new Map<string, vscode.WebviewPanel>();
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly globalState: vscode.Memento
+  ) {}
 
   openOrReveal(credentials: ADXCredentials, document: vscode.TextDocument): void {
     this.openOrRevealWithMode('table', credentials, document);
@@ -48,13 +52,30 @@ export class PanelManager {
 
     panel.webview.onDidReceiveMessage(async (message: { command: string }) => {
       if (message.command === 'ready') {
-        const jsonColumns: string[] = vscode.workspace
-          .getConfiguration('adxViewer')
-          .get<string[]>('jsonColumns', ['customDimensions']);
-        void panel.webview.postMessage({ command: 'setConfig', jsonColumns } satisfies HostToWebviewMessage);
+        this.sendConfig(panel);
         await this.runQuery(panel, credentials, document);
       }
     });
+  }
+
+  /** Push current config (json columns + active filters) to all open panels. */
+  broadcastConfig(): void {
+    for (const panel of this.panels.values()) {
+      this.sendConfig(panel);
+    }
+  }
+
+  private sendConfig(panel: vscode.WebviewPanel): void {
+    const jsonColumns = vscode.workspace
+      .getConfiguration('adxViewer')
+      .get<string[]>('jsonColumns', ['customDimensions']);
+    const activeFilters = getActiveFilters(getVariables(this.globalState))
+      .map(f => ({ name: f.name, value: f.value }));
+    void panel.webview.postMessage({
+      command: 'setConfig',
+      jsonColumns,
+      activeFilters,
+    } satisfies HostToWebviewMessage);
   }
 
   reloadForDocument(credentials: ADXCredentials, document: vscode.TextDocument): void {
@@ -71,7 +92,9 @@ export class PanelManager {
   ): Promise<void> {
     void panel.webview.postMessage({ command: 'renderLoading' } satisfies HostToWebviewMessage);
 
-    const queryText = document.getText();
+    const rawQuery = document.getText();
+    const variables = getVariables(this.globalState);
+    const queryText = applyVariablesToQuery(rawQuery, variables);
     const database = credentials.defaultDatabase ?? '';
 
     try {

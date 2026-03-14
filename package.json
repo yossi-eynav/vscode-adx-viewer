@@ -30,6 +30,14 @@
       {
         "command": "adxViewer.configureJsonColumns",
         "title": "ADX: Configure JSON Columns"
+      },
+      {
+        "command": "adxViewer.defineVariable",
+        "title": "ADX: Define Query Variable"
+      },
+      {
+        "command": "adxViewer.configureVariable",
+        "title": "ADX: Configure Query Variable"
       }
     ],
     "menus": {

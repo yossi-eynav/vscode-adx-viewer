@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { HostToWebviewMessage, RenderResultsMessage } from '../types/messages';
+import type { HostToWebviewMessage, RenderResultsMessage, ActiveFilter } from '../types/messages';
 import { isVsCodeWebview, getVsCodeApi } from './vscodeApi';
 import { ResultsTable } from './components/ResultsTable';
 import { ResultsChart } from './components/ResultsChart';
@@ -24,6 +24,7 @@ function stateFromResults(msg: RenderResultsMessage): ViewerState {
 export function App() {
   const [state, setState] = useState<ViewerState>({ kind: 'loading' });
   const [jsonColumns, setJsonColumns] = useState<string[]>(['customDimensions']);
+  const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const inVsCode = isVsCodeWebview();
 
   useEffect(() => {
@@ -39,7 +40,10 @@ export function App() {
         case 'renderEmpty':   setState({ kind: 'empty' }); break;
         case 'renderError':   setState({ kind: 'error', message: msg.message, statusCode: msg.statusCode, responseBody: msg.responseBody }); break;
         case 'renderResults': setState(stateFromResults(msg)); break;
-        case 'setConfig':     setJsonColumns(msg.jsonColumns); break;
+        case 'setConfig':
+          setJsonColumns(msg.jsonColumns);
+          setActiveFilters(msg.activeFilters);
+          break;
       }
     };
 
@@ -58,12 +62,12 @@ export function App() {
       padding: '16px',
     }}>
       {!inVsCode && <DevToolbar onStateChange={setState} graphMode={isGraphMode} />}
-      <ViewerContent state={state} jsonColumns={jsonColumns} />
+      <ViewerContent state={state} jsonColumns={jsonColumns} activeFilters={activeFilters} />
     </div>
   );
 }
 
-function ViewerContent({ state, jsonColumns }: { state: ViewerState; jsonColumns: string[] }) {
+function ViewerContent({ state, jsonColumns, activeFilters }: { state: ViewerState; jsonColumns: string[]; activeFilters: ActiveFilter[] }) {
   switch (state.kind) {
     case 'loading': return <StatusMessage text="Loading query results..." />;
     case 'empty':   return <StatusMessage text="No results returned." />;
@@ -84,6 +88,7 @@ function ViewerContent({ state, jsonColumns }: { state: ViewerState; jsonColumns
           truncated={state.truncated}
           executedAt={state.executedAt}
           queryDurationMs={state.queryDurationMs}
+          activeFilters={activeFilters}
         />
         <ResultsTable columns={state.columns} rows={state.rows} jsonColumns={jsonColumns} />
         <ResultsChart columns={state.columns} rows={state.rows} />
