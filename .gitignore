@@ -1,0 +1,6 @@
+node_modules/
+out/
+*.vsix
+media/chart.min.js
+.DS_Store
+*.log
