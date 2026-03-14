@@ -1,7 +1,7 @@
 import { ColumnType, ResultColumn, ResultRow } from '../types/messages';
 
-export function mapColumnType(adxType: string): ColumnType {
-  switch (adxType.toLowerCase()) {
+export function mapColumnType(adxType: string | undefined | null): ColumnType {
+  switch ((adxType ?? '').toLowerCase()) {
     case 'datetime':
     case 'date':
       return ColumnType.datetime;
