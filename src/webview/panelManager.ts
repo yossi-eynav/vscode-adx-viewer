@@ -43,6 +43,17 @@ export class PanelManager {
     });
   }
 
+  /**
+   * Re-executes the query for a document whose results panel is already open.
+   * If no panel is open for the given document, this is a no-op (FR-012).
+   */
+  reloadForDocument(credentials: ADXCredentials, document: vscode.TextDocument): void {
+    const key = document.uri.toString();
+    const panel = this.panels.get(key);
+    if (!panel) return;
+    void this.runQuery(panel, credentials, document);
+  }
+
   private async runQuery(
     panel: vscode.WebviewPanel,
     credentials: ADXCredentials,
