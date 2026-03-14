@@ -41,6 +41,7 @@ TypeScript 5.x, strict mode (`"strict": true`). Node.js 18+: Follow standard con
 
 - 001-adx-query-viewer: Added TypeScript 5.x, strict mode (`"strict": true`). Node.js 18+
 - 002-cred-validate-live-reload: Added VS Code Extension API patterns, azure-kusto-data v7, @azure/identity v4
+- 003-adx-explorer-results: Added VS Code TreeDataProvider pattern for Explorer sidebar tree view; `AdxResultNode` discriminated union; 500-row tree cap with visible truncation notice
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

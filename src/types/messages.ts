@@ -24,6 +24,8 @@ export interface RenderResultsMessage {
   rows: ResultRow[];
   truncated: boolean;
   totalRowCount: number;
+  executedAt: string; // ISO 8601
+  queryDurationMs: number;
 }
 
 export interface RenderEmptyMessage {
@@ -37,6 +39,11 @@ export interface RenderErrorMessage {
   responseBody?: string;
 }
 
+export interface SetConfigMessage {
+  command: 'setConfig';
+  jsonColumns: string[];
+}
+
 export interface ReadyMessage {
   command: 'ready';
 }
@@ -45,6 +52,7 @@ export type HostToWebviewMessage =
   | RenderLoadingMessage
   | RenderResultsMessage
   | RenderEmptyMessage
-  | RenderErrorMessage;
+  | RenderErrorMessage
+  | SetConfigMessage;
 
 export type WebviewToHostMessage = ReadyMessage;

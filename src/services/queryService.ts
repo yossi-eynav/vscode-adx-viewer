@@ -10,6 +10,7 @@ export interface QueryResult {
   totalRowCount: number;
   truncated: boolean;
   executedAt: Date;
+  queryDurationMs: number;
 }
 
 export class QueryError extends Error {
@@ -31,7 +32,7 @@ export class EmptyQueryError extends Error {
   }
 }
 
-const MAX_ROWS = 1000;
+
 
 // ---------------------------------------------------------------------------
 // Credential validation (US1)
@@ -136,7 +137,9 @@ export async function executeQuery(
 
     const client = new Client(kcsb);
 
+    const queryStart = Date.now();
     const result = await executeWithTimeout(client, database, queryText, 30000);
+    const queryDurationMs = Date.now() - queryStart;
 
     const primaryTable = result.primaryResults[0];
     const allRows: ResultRow[] = [];
@@ -159,15 +162,16 @@ export async function executeQuery(
       allRows.push(rowArray as ResultRow);
     }
 
+    const MAX_ROWS = 5000;
     const totalRowCount = allRows.length;
     const truncated = totalRowCount > MAX_ROWS;
     const rows = truncated ? allRows.slice(0, MAX_ROWS) : allRows;
 
     const columns: ResultColumn[] = (
-      primaryTable.columns as unknown as Array<{ columnName: string; columnType: string }>
+      primaryTable.columns as unknown as Array<{ name: string; type: string }>
     ).map((col) => ({
-      name: col.columnName,
-      type: mapColumnType(col.columnType),
+      name: col.name,
+      type: mapColumnType(col.type),
     }));
 
     return {
@@ -176,6 +180,7 @@ export async function executeQuery(
       totalRowCount,
       truncated,
       executedAt: new Date(),
+      queryDurationMs,
     };
   } catch (err) {
     if (err instanceof QueryError || err instanceof EmptyQueryError) {

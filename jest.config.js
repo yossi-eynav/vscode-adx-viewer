@@ -5,6 +5,8 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/tests/unit/**/*.test.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/.claude/'],
+  modulePathIgnorePatterns: ['/.claude/'],
   moduleNameMapper: {
     vscode: '<rootDir>/tests/unit/__mocks__/vscode.ts',
   },

@@ -9,20 +9,54 @@
   },
   "main": "./out/extension.js",
   "activationEvents": [
-    "onLanguage:adx"
+    "onLanguage:kusto"
   ],
   "contributes": {
     "commands": [
       {
         "command": "adxViewer.configureCredentials",
         "title": "ADX: Configure Connection"
+      },
+      {
+        "command": "adxViewer.openViewer",
+        "title": "ADX: Open Query Results",
+        "icon": "$(run)"
+      },
+      {
+        "command": "adxViewer.configureJsonColumns",
+        "title": "ADX: Configure JSON Columns"
       }
     ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "adxViewer.openViewer",
+          "when": "resourceExtname == .kusto",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ADX Query Viewer",
+      "properties": {
+        "adxViewer.jsonColumns": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["customDimensions"],
+          "description": "Column names whose values will be rendered as JSON."
+        }
+      }
+    },
     "languages": [
       {
-        "id": "adx",
-        "aliases": ["ADX", "Kusto Query Language (ADX)"],
-        "extensions": [".adx"]
+        "id": "kusto",
+        "aliases": [
+          "Kusto",
+          "Kusto Query Language"
+        ],
+        "extensions": [
+          ".kusto"
+        ]
       }
     ]
   },
@@ -30,6 +64,9 @@
     "compile": "webpack",
     "watch": "webpack --watch",
     "build": "webpack --mode production",
+    "webview:dev": "webpack serve --config webpack.webview.js",
+    "webview:build": "webpack --config webpack.webview.js --mode production",
+    "webview:fetch": "ts-node --project tsconfig.json scripts/fetchMockData.ts",
     "package": "vsce package",
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "jest --config jest.config.js",
@@ -40,19 +77,28 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.74.0",
     "@vscode/test-electron": "^2.3.0",
     "copy-webpack-plugin": "^11.0.0",
+    "html-webpack-plugin": "^5.6.6",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "ts-loader": "^9.0.0",
     "typescript": "^5.0.0",
     "webpack": "^5.0.0",
-    "webpack-cli": "^5.0.0"
+    "webpack-cli": "^5.0.0",
+    "webpack-dev-server": "^5.2.3"
   },
   "dependencies": {
     "@azure/identity": "^4.0.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@uiw/react-json-view": "^2.0.0-alpha.41",
     "azure-kusto-data": "^7.0.0",
-    "chart.js": "^4.5.1"
+    "chart.js": "^4.5.1",
+    "process": "^0.11.10",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
   }
 }

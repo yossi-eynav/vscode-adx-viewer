@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { executeQuery, QueryError, EmptyQueryError } from '../services/queryService';
 import { ADXCredentials } from '../services/credentialService';
-import { getResultsHtml, generateNonce } from './resultsHtml';
+import { getResultsHtml } from './resultsHtml';
 import { HostToWebviewMessage } from '../types/messages';
 
 export class PanelManager {
@@ -23,30 +23,26 @@ export class PanelManager {
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
+        localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'out', 'webview')],
       }
     );
 
-    const nonce = generateNonce();
-    panel.webview.html = getResultsHtml(panel.webview, this.extensionUri, nonce);
+    panel.webview.html = getResultsHtml(panel.webview, this.extensionUri);
 
     this.panels.set(key, panel);
-
-    panel.onDidDispose(() => {
-      this.panels.delete(key);
-    });
+    panel.onDidDispose(() => this.panels.delete(key));
 
     panel.webview.onDidReceiveMessage(async (message: { command: string }) => {
       if (message.command === 'ready') {
+        const jsonColumns: string[] = vscode.workspace
+          .getConfiguration('adxViewer')
+          .get<string[]>('jsonColumns', ['customDimensions']);
+        void panel.webview.postMessage({ command: 'setConfig', jsonColumns } satisfies HostToWebviewMessage);
         await this.runQuery(panel, credentials, document);
       }
     });
   }
 
-  /**
-   * Re-executes the query for a document whose results panel is already open.
-   * If no panel is open for the given document, this is a no-op (FR-012).
-   */
   reloadForDocument(credentials: ADXCredentials, document: vscode.TextDocument): void {
     const key = document.uri.toString();
     const panel = this.panels.get(key);
@@ -68,9 +64,7 @@ export class PanelManager {
       const result = await executeQuery(credentials, queryText, database);
 
       if (result.rows.length === 0) {
-        void panel.webview.postMessage({
-          command: 'renderEmpty',
-        } satisfies HostToWebviewMessage);
+        void panel.webview.postMessage({ command: 'renderEmpty' } satisfies HostToWebviewMessage);
       } else {
         void panel.webview.postMessage({
           command: 'renderResults',
@@ -78,6 +72,8 @@ export class PanelManager {
           rows: result.rows,
           truncated: result.truncated,
           totalRowCount: result.totalRowCount,
+          executedAt: result.executedAt.toISOString(),
+          queryDurationMs: result.queryDurationMs,
         } satisfies HostToWebviewMessage);
       }
     } catch (err) {

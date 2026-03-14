@@ -7,7 +7,7 @@ export function registerAdxDocumentProvider(
   panelManager: PanelManager
 ): void {
   const handleDocument = async (document: vscode.TextDocument): Promise<void> => {
-    if (!document.fileName.endsWith('.adx')) return;
+    if (!document.fileName.endsWith('.kusto')) return;
 
     const credentials = await readCredentials();
     if (!credentials) {
@@ -24,38 +24,33 @@ export function registerAdxDocumentProvider(
     panelManager.openOrReveal(credentials, document);
   };
 
-  // Handle documents already open at activation time
   for (const doc of vscode.workspace.textDocuments) {
     void handleDocument(doc);
   }
 
-  const openDisposable = vscode.workspace.onDidOpenTextDocument(handleDocument);
-  context.subscriptions.push(openDisposable);
+  context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(handleDocument));
 
-  // FR-008: Reload the results panel when a .adx file is saved.
-  // FR-010: Debounce rapid saves — wait 500 ms after the last save before executing.
   const saveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  const saveDisposable = vscode.workspace.onDidSaveTextDocument((document) => {
-    if (!document.fileName.endsWith('.adx')) return;
+  context.subscriptions.push(
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      if (!document.fileName.endsWith('.kusto')) return;
 
-    const key = document.uri.toString();
-    const existing = saveTimers.get(key);
-    if (existing !== undefined) clearTimeout(existing);
+      const key = document.uri.toString();
+      const existing = saveTimers.get(key);
+      if (existing !== undefined) clearTimeout(existing);
 
-    saveTimers.set(
-      key,
-      setTimeout(() => {
-        saveTimers.delete(key);
-        void (async () => {
-          // FR-012: Skip reload silently if credentials are not configured.
-          const creds = await readCredentials();
-          if (!creds) return;
-          panelManager.reloadForDocument(creds, document);
-        })();
-      }, 500)
-    );
-  });
-
-  context.subscriptions.push(saveDisposable);
+      saveTimers.set(
+        key,
+        setTimeout(() => {
+          saveTimers.delete(key);
+          void (async () => {
+            const creds = await readCredentials();
+            if (!creds) return;
+            panelManager.reloadForDocument(creds, document);
+          })();
+        }, 500)
+      );
+    })
+  );
 }
