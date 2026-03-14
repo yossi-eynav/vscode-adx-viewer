@@ -10,6 +10,7 @@ import {
 import JsonView from '@uiw/react-json-view';
 import { vscodeTheme } from '@uiw/react-json-view/vscode';
 import type { ResultColumn, ResultRow } from '../../types/messages';
+import { ColumnType } from '../../types/messages';
 
 const MAX_CELL_CHARS = 120;
 
@@ -67,6 +68,13 @@ export function ResultsTable({ columns, rows, jsonColumns }: Props) {
       columnHelper.accessor(row => row[col.name], {
         id: col.name,
         header: col.name,
+        sortingFn: col.type === ColumnType.datetime
+          ? (rowA, rowB, columnId) => {
+              const a = new Date(String(rowA.getValue(columnId) ?? '')).getTime();
+              const b = new Date(String(rowB.getValue(columnId) ?? '')).getTime();
+              return (isNaN(a) ? -Infinity : a) - (isNaN(b) ? -Infinity : b);
+            }
+          : 'auto',
         cell: info => <CellValue value={info.getValue()} isJsonColumn={jsonColumns.includes(col.name)} />,
       })
     ),
