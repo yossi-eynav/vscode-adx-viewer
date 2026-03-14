@@ -28,6 +28,86 @@ export class EmptyQueryError extends Error {
 
 const MAX_ROWS = 1000;
 
+// ---------------------------------------------------------------------------
+// Credential validation (US1)
+// ---------------------------------------------------------------------------
+
+export type ValidationResult =
+  | { ok: true }
+  | { ok: false; category: 'auth' | 'unreachable' | 'timeout'; message: string };
+
+class TimeoutError extends Error {
+  constructor() {
+    super('timeout');
+    this.name = 'TimeoutError';
+  }
+}
+
+function classifyConnectionError(err: unknown): ValidationResult {
+  if (err instanceof TimeoutError) {
+    return {
+      ok: false,
+      category: 'timeout',
+      message: 'Connection timed out after 10 seconds.',
+    };
+  }
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  if (
+    msg.includes('authentication') ||
+    msg.includes('unauthorized') ||
+    msg.includes('aadsts') ||
+    msg.includes('invalid_client') ||
+    msg.includes('forbidden') ||
+    msg.includes('access denied') ||
+    msg.includes('principal') ||
+    msg.includes('403') ||
+    msg.includes('401')
+  ) {
+    return {
+      ok: false,
+      category: 'auth',
+      message: 'Authentication failed. Check your Client ID and Client Secret.',
+    };
+  }
+  return {
+    ok: false,
+    category: 'unreachable',
+    message: 'Cannot reach cluster. Check the Cluster URL and your network.',
+  };
+}
+
+export async function testConnection(credentials: ADXCredentials): Promise<ValidationResult> {
+  try {
+    const credential = new ClientSecretCredential(
+      credentials.tenantId,
+      credentials.clientId,
+      credentials.clientSecret
+    );
+
+    const kcsb = KustoConnectionStringBuilder.withTokenCredential(
+      credentials.clusterUrl,
+      credential
+    );
+
+    const client = new Client(kcsb);
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new TimeoutError()), 10000)
+    );
+
+    await Promise.race([
+      client.execute(credentials.defaultDatabase ?? '', 'print "ok"'),
+      timeoutPromise,
+    ]);
+
+    return { ok: true };
+  } catch (err) {
+    return classifyConnectionError(err);
+  }
+}
+
+// ---------------------------------------------------------------------------
+
 export async function executeQuery(
   credentials: ADXCredentials,
   queryText: string,
