@@ -23,6 +23,11 @@
         "icon": "$(run)"
       },
       {
+        "command": "adxViewer.showGraph",
+        "title": "ADX: Show Graph",
+        "icon": "$(graph-line)"
+      },
+      {
         "command": "adxViewer.configureJsonColumns",
         "title": "ADX: Configure JSON Columns"
       }
@@ -32,7 +37,12 @@
         {
           "command": "adxViewer.openViewer",
           "when": "resourceExtname == .kusto",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "adxViewer.showGraph",
+          "when": "resourceExtname == .kusto",
+          "group": "navigation@2"
         }
       ]
     },

@@ -10,16 +10,31 @@ export class PanelManager {
   constructor(private readonly extensionUri: vscode.Uri) {}
 
   openOrReveal(credentials: ADXCredentials, document: vscode.TextDocument): void {
-    const key = document.uri.toString();
+    this.openOrRevealWithMode('table', credentials, document);
+  }
+
+  openOrRevealGraph(credentials: ADXCredentials, document: vscode.TextDocument): void {
+    this.openOrRevealWithMode('graph', credentials, document);
+  }
+
+  private openOrRevealWithMode(
+    mode: 'table' | 'graph',
+    credentials: ADXCredentials,
+    document: vscode.TextDocument
+  ): void {
+    const key = `${mode}:${document.uri.toString()}`;
 
     if (this.panels.has(key)) {
       this.panels.get(key)!.reveal();
       return;
     }
 
+    const filename = document.fileName.split('/').pop() ?? 'Results';
+    const title = mode === 'graph' ? `ADX Graph: ${filename}` : `ADX: ${filename}`;
+
     const panel = vscode.window.createWebviewPanel(
       'adxQueryResults',
-      `ADX: ${document.fileName.split('/').pop() ?? 'Results'}`,
+      title,
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,
@@ -27,8 +42,7 @@ export class PanelManager {
       }
     );
 
-    panel.webview.html = getResultsHtml(panel.webview, this.extensionUri);
-
+    panel.webview.html = getResultsHtml(panel.webview, this.extensionUri, mode);
     this.panels.set(key, panel);
     panel.onDidDispose(() => this.panels.delete(key));
 
@@ -44,7 +58,7 @@ export class PanelManager {
   }
 
   reloadForDocument(credentials: ADXCredentials, document: vscode.TextDocument): void {
-    const key = document.uri.toString();
+    const key = `table:${document.uri.toString()}`;
     const panel = this.panels.get(key);
     if (!panel) return;
     void this.runQuery(panel, credentials, document);

@@ -10,6 +10,28 @@ export function activate(context: vscode.ExtensionContext): void {
   registerAdxDocumentProvider(context, panelManager);
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('adxViewer.showGraph', async () => {
+      const doc = vscode.window.activeTextEditor?.document;
+      if (!doc || !doc.fileName.endsWith('.kusto')) {
+        vscode.window.showErrorMessage('Open a .kusto file first.');
+        return;
+      }
+      const credentials = await readCredentials();
+      if (!credentials) {
+        const action = await vscode.window.showErrorMessage(
+          "ADX credentials not configured. Run 'ADX: Configure Connection' to set up.",
+          'Configure Now'
+        );
+        if (action === 'Configure Now') {
+          await vscode.commands.executeCommand('adxViewer.configureCredentials');
+        }
+        return;
+      }
+      panelManager.openOrRevealGraph(credentials, doc);
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('adxViewer.openViewer', async () => {
       const doc = vscode.window.activeTextEditor?.document;
       if (!doc || !doc.fileName.endsWith('.kusto')) {

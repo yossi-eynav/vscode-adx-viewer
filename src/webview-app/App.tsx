@@ -3,9 +3,12 @@ import type { HostToWebviewMessage, RenderResultsMessage } from '../types/messag
 import { isVsCodeWebview, getVsCodeApi } from './vscodeApi';
 import { ResultsTable } from './components/ResultsTable';
 import { ResultsChart } from './components/ResultsChart';
+import { GraphView } from './components/GraphView';
 import { ErrorMessage } from './components/ErrorMessage';
 import { StatusMessage } from './components/StatusMessage';
 import { QueryInfoBar } from './components/QueryInfoBar';
+
+const isGraphMode = (window as { adxViewerMode?: string }).adxViewerMode === 'graph';
 import { MOCK_RESULTS, MOCK_RESULTS_TRUNCATED, MOCK_ERROR, MOCK_ERROR_AUTH } from './mockData';
 
 type ViewerState =
@@ -54,7 +57,7 @@ export function App() {
       margin: 0,
       padding: '16px',
     }}>
-      {!inVsCode && <DevToolbar onStateChange={setState} />}
+      {!inVsCode && <DevToolbar onStateChange={setState} graphMode={isGraphMode} />}
       <ViewerContent state={state} jsonColumns={jsonColumns} />
     </div>
   );
@@ -65,7 +68,15 @@ function ViewerContent({ state, jsonColumns }: { state: ViewerState; jsonColumns
     case 'loading': return <StatusMessage text="Loading query results..." />;
     case 'empty':   return <StatusMessage text="No results returned." />;
     case 'error':   return <ErrorMessage message={state.message} statusCode={state.statusCode} responseBody={state.responseBody} />;
-    case 'results': return (
+    case 'results': return isGraphMode ? (
+      <GraphView
+        columns={state.columns}
+        rows={state.rows}
+        totalRowCount={state.totalRowCount}
+        executedAt={state.executedAt}
+        queryDurationMs={state.queryDurationMs}
+      />
+    ) : (
       <>
         <QueryInfoBar
           totalRowCount={state.totalRowCount}
@@ -81,7 +92,7 @@ function ViewerContent({ state, jsonColumns }: { state: ViewerState; jsonColumns
   }
 }
 
-function DevToolbar({ onStateChange }: { onStateChange: (s: ViewerState) => void }) {
+function DevToolbar({ onStateChange, graphMode }: { onStateChange: (s: ViewerState) => void; graphMode: boolean }) {
   const scenarios: Array<{ label: string; state: ViewerState }> = [
     { label: 'Results',   state: stateFromResults(MOCK_RESULTS) },
     { label: 'Truncated', state: stateFromResults(MOCK_RESULTS_TRUNCATED) },
@@ -102,7 +113,7 @@ function DevToolbar({ onStateChange }: { onStateChange: (s: ViewerState) => void
       borderRadius: '4px',
       fontSize: '11px',
     }}>
-      <span style={{ color: '#9d9d9d', marginRight: '4px' }}>Dev:</span>
+      <span style={{ color: '#9d9d9d', marginRight: '4px' }}>Dev {graphMode ? '(graph)' : '(table)'}:</span>
       {scenarios.map(s => (
         <button
           key={s.label}

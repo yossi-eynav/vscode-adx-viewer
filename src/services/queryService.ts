@@ -1,4 +1,4 @@
-import { Client, KustoConnectionStringBuilder } from 'azure-kusto-data';
+import { Client, KustoConnectionStringBuilder, ClientRequestProperties } from 'azure-kusto-data';
 import { ClientSecretCredential } from '@azure/identity';
 import { ResultColumn, ResultRow, ColumnType } from '../types/messages';
 import { ADXCredentials } from './credentialService';
@@ -223,11 +223,17 @@ async function executeWithTimeout(
   query: string,
   timeoutMs: number
 ): Promise<ReturnType<Client['execute']>> {
+  const props = new ClientRequestProperties();
+  // Allow up to 256 MB result sets (default is 64 MB)
+  props.setOption('truncationmaxsize', 256 * 1024 * 1024);
+  // Allow up to 500 000 records (default is 500 000, kept explicit for clarity)
+  props.setOption('truncationmaxrecords', 500_000);
+
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
       () => reject(new QueryError('Connection timed out. Check the cluster URL and your network.')),
       timeoutMs
     )
   );
-  return Promise.race([client.execute(database, query), timeoutPromise]);
+  return Promise.race([client.execute(database, query, props), timeoutPromise]);
 }

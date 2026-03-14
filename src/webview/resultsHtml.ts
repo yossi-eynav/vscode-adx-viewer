@@ -3,7 +3,8 @@ import * as crypto from 'crypto';
 
 export function getResultsHtml(
   webview: vscode.Webview,
-  extensionUri: vscode.Uri
+  extensionUri: vscode.Uri,
+  mode: 'table' | 'graph' = 'table'
 ): string {
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, 'out', 'webview', 'webview.js')
@@ -24,6 +25,7 @@ export function getResultsHtml(
   <div id="root"></div>
   <div id="load-error" style="display:none;padding:16px;color:#f48771;font-family:monospace;white-space:pre-wrap;"></div>
   <script nonce="${nonce}">
+    window.adxViewerMode = '${mode}';
     window.onerror = function(msg, src, line, col, err) {
       var el = document.getElementById('load-error');
       el.style.display = 'block';
