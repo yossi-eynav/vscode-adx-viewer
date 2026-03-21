@@ -67,7 +67,15 @@
         ],
         "extensions": [
           ".kusto"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "kusto",
+        "scopeName": "source.kusto",
+        "path": "./syntaxes/kusto.tmGrammar.json"
       }
     ]
   },
