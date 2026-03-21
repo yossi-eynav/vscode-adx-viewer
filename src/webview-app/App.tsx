@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { HostToWebviewMessage, RenderResultsMessage, ActiveFilter } from '../types/messages';
-import { isVsCodeWebview, getVsCodeApi } from './vscodeApi';
+import { getVsCodeApi } from './vscodeApi';
 import { ResultsTable } from './components/ResultsTable';
 import { ResultsChart } from './components/ResultsChart';
 import { GraphView } from './components/GraphView';
@@ -9,7 +9,6 @@ import { StatusMessage } from './components/StatusMessage';
 import { QueryInfoBar } from './components/QueryInfoBar';
 
 const isGraphMode = (window as { adxViewerMode?: string }).adxViewerMode === 'graph';
-import { MOCK_RESULTS, MOCK_RESULTS_TRUNCATED, MOCK_ERROR, MOCK_ERROR_AUTH } from './mockData';
 
 type ViewerState =
   | { kind: 'loading' }
@@ -24,14 +23,8 @@ function stateFromResults(msg: RenderResultsMessage): ViewerState {
 export function App() {
   const [state, setState] = useState<ViewerState>({ kind: 'loading' });
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
-  const inVsCode = isVsCodeWebview();
 
   useEffect(() => {
-    if (!inVsCode) {
-      setState(stateFromResults(MOCK_RESULTS));
-      return;
-    }
-
     const handler = (event: MessageEvent<HostToWebviewMessage>) => {
       const msg = event.data;
       switch (msg.command) {
@@ -59,7 +52,6 @@ export function App() {
       margin: 0,
       padding: '16px',
     }}>
-      {!inVsCode && <DevToolbar onStateChange={setState} graphMode={isGraphMode} />}
       <ViewerContent state={state} activeFilters={activeFilters} />
     </div>
   );
@@ -95,45 +87,3 @@ function ViewerContent({ state, activeFilters }: { state: ViewerState; activeFil
   }
 }
 
-function DevToolbar({ onStateChange, graphMode }: { onStateChange: (s: ViewerState) => void; graphMode: boolean }) {
-  const scenarios: Array<{ label: string; state: ViewerState }> = [
-    { label: 'Results',   state: stateFromResults(MOCK_RESULTS) },
-    { label: 'Truncated', state: stateFromResults(MOCK_RESULTS_TRUNCATED) },
-    { label: 'Loading',   state: { kind: 'loading' } },
-    { label: 'Empty',     state: { kind: 'empty' } },
-    { label: 'Error 400', state: { kind: 'error', message: MOCK_ERROR.message, statusCode: MOCK_ERROR.statusCode, responseBody: MOCK_ERROR.responseBody } },
-    { label: 'Error 401', state: { kind: 'error', message: MOCK_ERROR_AUTH.message, statusCode: MOCK_ERROR_AUTH.statusCode } },
-  ];
-
-  return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '6px',
-      padding: '6px 10px',
-      marginBottom: '12px',
-      background: '#2d2d30',
-      borderRadius: '4px',
-      fontSize: '11px',
-    }}>
-      <span style={{ color: '#9d9d9d', marginRight: '4px' }}>Dev {graphMode ? '(graph)' : '(table)'}:</span>
-      {scenarios.map(s => (
-        <button
-          key={s.label}
-          onClick={() => onStateChange(s.state)}
-          style={{
-            padding: '2px 8px',
-            background: '#3c3c3c',
-            border: '1px solid #555',
-            borderRadius: '3px',
-            color: '#cccccc',
-            cursor: 'pointer',
-            fontSize: '11px',
-          }}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
-}
