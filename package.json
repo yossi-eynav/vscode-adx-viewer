@@ -2,12 +2,34 @@
   "name": "adx-vscode-viewer",
   "displayName": "ADX Query Viewer",
   "description": "View Azure Data Explorer KQL query results directly in VS Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "yossi-eynav",
   "engines": {
     "vscode": "^1.74.0"
   },
+  "icon": "images/logo.png",
   "license": "MIT",
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "kusto",
+    "kql",
+    "azure",
+    "adx",
+    "azure data explorer",
+    "data explorer",
+    "query"
+  ],
+  "galleryBanner": {
+    "color": "#ffffff",
+    "theme": "light"
+  },
+  "homepage": "https://github.com/yossi-eynav/vscode-adx-viewer",
+  "bugs": {
+    "url": "https://github.com/yossi-eynav/vscode-adx-viewer/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/yossi-eynav/vscode-adx-viewer"
