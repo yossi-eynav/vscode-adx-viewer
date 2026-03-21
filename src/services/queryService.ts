@@ -139,7 +139,7 @@ export async function executeQuery(
     const client = new Client(kcsb);
 
     const queryStart = Date.now();
-    const result = await executeWithTimeout(client, database, queryText, 30000, queryParameters);
+    const result = await executeWithTimeout(client, database, queryText, 180000, queryParameters);
     const queryDurationMs = Date.now() - queryStart;
 
     const primaryTable = result.primaryResults[0];
@@ -227,16 +227,15 @@ async function executeWithTimeout(
 ): Promise<ReturnType<Client['execute']>> {
   const props = new ClientRequestProperties();
   // Allow up to 256 MB result sets (default is 64 MB)
-  props.setOption('truncationmaxsize', 256 * 1024 * 1024);
-  // Allow up to 500 000 records (default is 500 000, kept explicit for clarity)
-  props.setOption('truncationmaxrecords', 500_000);
+  props.setOption('truncationmaxsize', 1024 * 1024 * 1024);
+  props.setOption('truncationmaxrecords', 1_000_000);
   for (const [name, value] of Object.entries(queryParameters ?? {})) {
     props.setParameter(name, value);
   }
 
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
-      () => reject(new QueryError('Connection timed out. Check the cluster URL and your network.')),
+      () => reject(new QueryError('Query timed out after 3 minutes. Check the cluster URL and your network.')),
       timeoutMs
     )
   );
