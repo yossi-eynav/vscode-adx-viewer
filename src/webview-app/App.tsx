@@ -23,7 +23,6 @@ function stateFromResults(msg: RenderResultsMessage): ViewerState {
 
 export function App() {
   const [state, setState] = useState<ViewerState>({ kind: 'loading' });
-  const [jsonColumns, setJsonColumns] = useState<string[]>(['customDimensions']);
   const [activeFilters, setActiveFilters] = useState<ActiveFilter[]>([]);
   const inVsCode = isVsCodeWebview();
 
@@ -41,7 +40,6 @@ export function App() {
         case 'renderError':   setState({ kind: 'error', message: msg.message, statusCode: msg.statusCode, responseBody: msg.responseBody }); break;
         case 'renderResults': setState(stateFromResults(msg)); break;
         case 'setConfig':
-          setJsonColumns(msg.jsonColumns);
           setActiveFilters(msg.activeFilters);
           break;
       }
@@ -62,12 +60,12 @@ export function App() {
       padding: '16px',
     }}>
       {!inVsCode && <DevToolbar onStateChange={setState} graphMode={isGraphMode} />}
-      <ViewerContent state={state} jsonColumns={jsonColumns} activeFilters={activeFilters} />
+      <ViewerContent state={state} activeFilters={activeFilters} />
     </div>
   );
 }
 
-function ViewerContent({ state, jsonColumns, activeFilters }: { state: ViewerState; jsonColumns: string[]; activeFilters: ActiveFilter[] }) {
+function ViewerContent({ state, activeFilters }: { state: ViewerState; activeFilters: ActiveFilter[] }) {
   switch (state.kind) {
     case 'loading': return <StatusMessage text="Loading query results..." />;
     case 'empty':   return <StatusMessage text="No results returned." />;
@@ -90,7 +88,7 @@ function ViewerContent({ state, jsonColumns, activeFilters }: { state: ViewerSta
           queryDurationMs={state.queryDurationMs}
           activeFilters={activeFilters}
         />
-        <ResultsTable columns={state.columns} rows={state.rows} jsonColumns={jsonColumns} />
+        <ResultsTable columns={state.columns} rows={state.rows} />
         <ResultsChart columns={state.columns} rows={state.rows} />
       </>
     );

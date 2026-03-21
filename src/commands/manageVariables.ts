@@ -15,9 +15,9 @@ export function registerDefineVariable(
       const existing = getVariables(context.globalState);
 
       const name = await vscode.window.showInputBox({
-        title: 'Define Query Variable (1 / 3)',
-        prompt: 'Variable name — also used as the default column name in the WHERE clause',
-        placeHolder: 'site',
+        title: 'Define Query Variable (1 / 2)',
+        prompt: 'Variable name — used as the KQL query parameter name (with _query suffix)',
+        placeHolder: 'query_name',
         ignoreFocusOut: true,
         validateInput: v => {
           if (!v.trim()) return 'Name is required';
@@ -27,24 +27,14 @@ export function registerDefineVariable(
       });
       if (name === undefined) return;
       const trimmedName = name.trim();
-
-      const columnInput = await vscode.window.showInputBox({
-        title: 'Define Query Variable (2 / 3)',
-        prompt: 'Column to filter on — press Enter to use the variable name',
-        placeHolder: trimmedName,
-        value: trimmedName,
-        ignoreFocusOut: true,
-        validateInput: v => (v.trim() ? null : 'Column name is required'),
-      });
-      if (columnInput === undefined) return;
-      const columnName = columnInput.trim();
+      const columnName = trimmedName;
 
       const sourceChoice = await vscode.window.showQuickPick(
         [
           { label: '$(run) Run a KQL query', description: 'Execute a query to fetch the options list', sourceKind: 'query' as const },
           { label: '$(list-unordered) Use fixed values', description: 'Enter a static comma-separated list', sourceKind: 'values' as const },
         ],
-        { title: 'Define Query Variable (3 / 3)', placeHolder: 'How should the options list be populated?' }
+        { title: 'Define Query Variable (2 / 2)', placeHolder: 'How should the options list be populated?' }
       );
       if (!sourceChoice) return;
 
@@ -64,7 +54,7 @@ export function registerDefineVariable(
         const raw = await vscode.window.showInputBox({
           title: `Define Query Variable — values for "${trimmedName}"`,
           prompt: 'Comma-separated list of values',
-          placeHolder: 'PACS_Agent, BI_Agent, DR_Agent',
+          placeHolder: 'value1,value2,value3',
           ignoreFocusOut: true,
           validateInput: v => (v.trim() ? null : 'At least one value is required'),
         });

@@ -15,9 +15,12 @@ jest.mock('fs', () => ({
 
 import {
   readCredentials,
-  writeCredentials,
+  readAllConnections,
+  writeConnection,
+  setActiveConnection,
   validateCredentials,
   ADXCredentials,
+  ConnectionsStore,
 } from '../../src/services/credentialService';
 
 const fsMock = fs.promises as jest.Mocked<typeof fs.promises>;
@@ -28,6 +31,12 @@ const VALID_CREDS: ADXCredentials = {
   tenantId: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
   clientId: 'yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy',
   clientSecret: 'my-secret',
+  defaultDatabase: 'MyDatabase',
+};
+
+const VALID_STORE: ConnectionsStore = {
+  activeConnection: 'default',
+  connections: { default: VALID_CREDS },
 };
 
 beforeEach(() => {
@@ -43,7 +52,14 @@ describe('readCredentials', () => {
     expect(result).toBeNull();
   });
 
-  it('returns parsed credentials when file exists and is valid', async () => {
+  it('returns active connection credentials from new multi-connection format', async () => {
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(VALID_STORE));
+
+    const result = await readCredentials();
+    expect(result).toEqual(VALID_CREDS);
+  });
+
+  it('migrates old single-connection format and returns credentials', async () => {
     fsMock.readFile.mockResolvedValueOnce(JSON.stringify(VALID_CREDS));
 
     const result = await readCredentials();
@@ -59,47 +75,121 @@ describe('readCredentials', () => {
 
   it('returns null when required fields are missing', async () => {
     const incomplete = { clusterUrl: 'https://test.kusto.windows.net' };
-    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(incomplete));
+    const store: ConnectionsStore = {
+      activeConnection: 'default',
+      connections: { default: incomplete as ADXCredentials },
+    };
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(store));
 
     const result = await readCredentials();
     expect(result).toBeNull();
   });
 });
 
-describe('writeCredentials', () => {
-  it('creates the credentials file at the correct path', async () => {
+describe('readAllConnections', () => {
+  it('returns null when file is absent', async () => {
+    fsMock.readFile.mockRejectedValueOnce(new Error('ENOENT'));
+    expect(await readAllConnections()).toBeNull();
+  });
+
+  it('returns the full store', async () => {
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(VALID_STORE));
+    expect(await readAllConnections()).toEqual(VALID_STORE);
+  });
+
+  it('migrates old format into a store with a default connection', async () => {
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(VALID_CREDS));
+    const result = await readAllConnections();
+    expect(result?.activeConnection).toBe('default');
+    expect(result?.connections['default']).toEqual(VALID_CREDS);
+  });
+});
+
+describe('writeConnection', () => {
+  it('creates a new store when file is absent, writing to correct path', async () => {
+    fsMock.readFile.mockRejectedValueOnce(new Error('ENOENT'));
     fsMock.mkdir.mockResolvedValueOnce(undefined);
     fsMock.writeFile.mockResolvedValueOnce(undefined);
     fsMock.chmod.mockResolvedValueOnce(undefined);
 
-    await writeCredentials(VALID_CREDS);
+    await writeConnection('default', VALID_CREDS);
 
+    const expectedStore: ConnectionsStore = {
+      activeConnection: 'default',
+      connections: { default: VALID_CREDS },
+    };
     expect(fsMock.writeFile).toHaveBeenCalledWith(
       CREDS_PATH,
-      JSON.stringify(VALID_CREDS, null, 2),
+      JSON.stringify(expectedStore, null, 2),
       'utf8'
     );
   });
 
-  it('sets file permissions to 0o600 after writing', async () => {
+  it('adds a new connection to an existing store', async () => {
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(VALID_STORE));
     fsMock.mkdir.mockResolvedValueOnce(undefined);
     fsMock.writeFile.mockResolvedValueOnce(undefined);
     fsMock.chmod.mockResolvedValueOnce(undefined);
 
-    await writeCredentials(VALID_CREDS);
+    const staging: ADXCredentials = { ...VALID_CREDS, clusterUrl: 'https://staging.kusto.windows.net' };
+    await writeConnection('staging', staging);
+
+    const written = JSON.parse((fsMock.writeFile.mock.calls[0][1] as string)) as ConnectionsStore;
+    expect(written.connections['staging']).toEqual(staging);
+    expect(written.connections['default']).toEqual(VALID_CREDS);
+    expect(written.activeConnection).toBe('default');
+  });
+
+  it('sets file permissions to 0o600 after writing', async () => {
+    fsMock.readFile.mockRejectedValueOnce(new Error('ENOENT'));
+    fsMock.mkdir.mockResolvedValueOnce(undefined);
+    fsMock.writeFile.mockResolvedValueOnce(undefined);
+    fsMock.chmod.mockResolvedValueOnce(undefined);
+
+    await writeConnection('default', VALID_CREDS);
 
     expect(fsMock.chmod).toHaveBeenCalledWith(CREDS_PATH, 0o600);
   });
 
   it('creates the parent directory with mkdir -p', async () => {
+    fsMock.readFile.mockRejectedValueOnce(new Error('ENOENT'));
     fsMock.mkdir.mockResolvedValueOnce(undefined);
     fsMock.writeFile.mockResolvedValueOnce(undefined);
     fsMock.chmod.mockResolvedValueOnce(undefined);
 
-    await writeCredentials(VALID_CREDS);
+    await writeConnection('default', VALID_CREDS);
 
     const dirPath = path.join(os.homedir(), '.config', 'adx-viewer');
     expect(fsMock.mkdir).toHaveBeenCalledWith(dirPath, { recursive: true });
+  });
+});
+
+describe('setActiveConnection', () => {
+  it('updates activeConnection in the store', async () => {
+    const store: ConnectionsStore = {
+      activeConnection: 'default',
+      connections: {
+        default: VALID_CREDS,
+        staging: { ...VALID_CREDS, clusterUrl: 'https://staging.kusto.windows.net' },
+      },
+    };
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(store));
+    fsMock.mkdir.mockResolvedValueOnce(undefined);
+    fsMock.writeFile.mockResolvedValueOnce(undefined);
+    fsMock.chmod.mockResolvedValueOnce(undefined);
+
+    await setActiveConnection('staging');
+
+    const written = JSON.parse((fsMock.writeFile.mock.calls[0][1] as string)) as ConnectionsStore;
+    expect(written.activeConnection).toBe('staging');
+  });
+
+  it('does nothing when the connection name does not exist', async () => {
+    fsMock.readFile.mockResolvedValueOnce(JSON.stringify(VALID_STORE));
+
+    await setActiveConnection('nonexistent');
+
+    expect(fsMock.writeFile).not.toHaveBeenCalled();
   });
 });
 

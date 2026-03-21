@@ -3,10 +3,15 @@ import { executeQuery, QueryError, EmptyQueryError } from '../services/queryServ
 import { ADXCredentials } from '../services/credentialService';
 import { getResultsHtml } from './resultsHtml';
 import { HostToWebviewMessage } from '../types/messages';
-import { getVariables, getActiveFilters, applyVariablesToQuery } from '../services/variableService';
+import { getVariables, getActiveFilters } from '../services/variableService';
+
+interface PanelEntry {
+  panel: vscode.WebviewPanel;
+  document: vscode.TextDocument;
+}
 
 export class PanelManager {
-  private panels = new Map<string, vscode.WebviewPanel>();
+  private panels = new Map<string, PanelEntry>();
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -29,7 +34,7 @@ export class PanelManager {
     const key = `${mode}:${document.uri.toString()}`;
 
     if (this.panels.has(key)) {
-      this.panels.get(key)!.reveal();
+      this.panels.get(key)!.panel.reveal();
       return;
     }
 
@@ -47,7 +52,7 @@ export class PanelManager {
     );
 
     panel.webview.html = getResultsHtml(panel.webview, this.extensionUri, mode);
-    this.panels.set(key, panel);
+    this.panels.set(key, { panel, document });
     panel.onDidDispose(() => this.panels.delete(key));
 
     panel.webview.onDidReceiveMessage(async (message: { command: string }) => {
@@ -58,31 +63,34 @@ export class PanelManager {
     });
   }
 
-  /** Push current config (json columns + active filters) to all open panels. */
+  /** Push current config (active filters) to all open panels. */
   broadcastConfig(): void {
-    for (const panel of this.panels.values()) {
+    for (const { panel } of this.panels.values()) {
       this.sendConfig(panel);
     }
   }
 
+  /** Re-run queries on all open panels with new credentials (e.g. after connection switch). */
+  reloadAll(credentials: ADXCredentials): void {
+    for (const { panel, document } of this.panels.values()) {
+      void this.runQuery(panel, credentials, document);
+    }
+  }
+
   private sendConfig(panel: vscode.WebviewPanel): void {
-    const jsonColumns = vscode.workspace
-      .getConfiguration('adxViewer')
-      .get<string[]>('jsonColumns', ['customDimensions']);
     const activeFilters = getActiveFilters(getVariables(this.globalState))
       .map(f => ({ name: f.name, value: f.value }));
     void panel.webview.postMessage({
       command: 'setConfig',
-      jsonColumns,
       activeFilters,
     } satisfies HostToWebviewMessage);
   }
 
   reloadForDocument(credentials: ADXCredentials, document: vscode.TextDocument): void {
     const key = `table:${document.uri.toString()}`;
-    const panel = this.panels.get(key);
-    if (!panel) return;
-    void this.runQuery(panel, credentials, document);
+    const entry = this.panels.get(key);
+    if (!entry) return;
+    void this.runQuery(entry.panel, credentials, document);
   }
 
   private async runQuery(
@@ -92,13 +100,14 @@ export class PanelManager {
   ): Promise<void> {
     void panel.webview.postMessage({ command: 'renderLoading' } satisfies HostToWebviewMessage);
 
-    const rawQuery = document.getText();
+    const queryText = document.getText();
     const variables = getVariables(this.globalState);
-    const queryText = applyVariablesToQuery(rawQuery, variables);
+    const activeFilters = getActiveFilters(variables);
+    const queryParameters = Object.fromEntries(activeFilters.map(f => [`${f.name}_query`, f.value]));
     const database = credentials.defaultDatabase ?? '';
 
     try {
-      const result = await executeQuery(credentials, queryText, database);
+      const result = await executeQuery(credentials, queryText, database, queryParameters);
 
       if (result.rows.length === 0) {
         void panel.webview.postMessage({ command: 'renderEmpty' } satisfies HostToWebviewMessage);

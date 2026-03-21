@@ -13,8 +13,9 @@ export function mapColumnType(adxType: string | undefined | null): ColumnType {
       return ColumnType.numeric;
     case 'string':
     case 'guid':
-    case 'dynamic':
       return ColumnType.string;
+    case 'dynamic':
+      return ColumnType.dynamic;
     case 'bool':
     case 'boolean':
       return ColumnType.bool;

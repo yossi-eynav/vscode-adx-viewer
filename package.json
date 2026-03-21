@@ -15,7 +15,11 @@
     "commands": [
       {
         "command": "adxViewer.configureCredentials",
-        "title": "ADX: Configure Connection"
+        "title": "ADX: Add / Edit Connection"
+      },
+      {
+        "command": "adxViewer.switchConnection",
+        "title": "ADX: Switch Connection"
       },
       {
         "command": "adxViewer.openViewer",
@@ -26,10 +30,6 @@
         "command": "adxViewer.showGraph",
         "title": "ADX: Show Graph",
         "icon": "$(graph-line)"
-      },
-      {
-        "command": "adxViewer.configureJsonColumns",
-        "title": "ADX: Configure JSON Columns"
       },
       {
         "command": "adxViewer.defineVariable",
@@ -56,14 +56,7 @@
     },
     "configuration": {
       "title": "ADX Query Viewer",
-      "properties": {
-        "adxViewer.jsonColumns": {
-          "type": "array",
-          "items": { "type": "string" },
-          "default": ["customDimensions"],
-          "description": "Column names whose values will be rendered as JSON."
-        }
-      }
+      "properties": {}
     },
     "languages": [
       {

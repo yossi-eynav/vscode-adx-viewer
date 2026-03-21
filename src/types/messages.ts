@@ -4,6 +4,7 @@ export enum ColumnType {
   string = 'string',
   bool = 'bool',
   timespan = 'timespan',
+  dynamic = 'dynamic',
   other = 'other',
 }
 
@@ -46,7 +47,6 @@ export interface ActiveFilter {
 
 export interface SetConfigMessage {
   command: 'setConfig';
-  jsonColumns: string[];
   activeFilters: ActiveFilter[];
 }
 

@@ -1,23 +1,69 @@
 import * as vscode from 'vscode';
 import {
-  readCredentials,
-  writeCredentials,
+  readAllConnections,
+  writeConnection,
+  setActiveConnection,
   validateCredentials,
   ADXCredentials,
 } from '../services/credentialService';
 import { testConnection } from '../services/queryService';
 
-export function registerConfigureCredentials(context: vscode.ExtensionContext): void {
+export function registerConfigureCredentials(
+  context: vscode.ExtensionContext,
+  onConnectionActivated?: () => Promise<void>
+): void {
   const disposable = vscode.commands.registerCommand(
     'adxViewer.configureCredentials',
     async () => {
-      const existing = await readCredentials();
+      const store = await readAllConnections();
+      const connectionNames = store ? Object.keys(store.connections) : [];
+
+      // Step 0: pick an existing connection to edit, or create a new one
+      let connectionName: string | undefined;
+
+      if (connectionNames.length === 0) {
+        connectionName = await vscode.window.showInputBox({
+          title: 'ADX: Add Connection — Name',
+          prompt: 'Enter a name for this connection',
+          placeHolder: 'prod, staging, dev...',
+          value: 'default',
+          ignoreFocusOut: true,
+        });
+      } else {
+        const items: vscode.QuickPickItem[] = [
+          ...connectionNames.map(n => ({
+            label: n,
+            description: n === store?.activeConnection ? '(active)' : undefined,
+          })),
+          { label: '$(add) New connection...', description: '' },
+        ];
+        const pick = await vscode.window.showQuickPick(items, {
+          title: 'ADX: Add / Edit Connection',
+          placeHolder: 'Select a connection to edit, or add a new one',
+        });
+        if (!pick) return;
+
+        if (pick.label === '$(add) New connection...') {
+          connectionName = await vscode.window.showInputBox({
+            title: 'ADX: New Connection — Name',
+            prompt: 'Enter a name for this connection',
+            placeHolder: 'prod, staging, dev...',
+            ignoreFocusOut: true,
+          });
+        } else {
+          connectionName = pick.label;
+        }
+      }
+
+      if (!connectionName) return;
+
+      const existing = store?.connections[connectionName];
       let prefill: Partial<ADXCredentials> | undefined = existing ?? undefined;
 
       // Retry loop: re-collect and re-validate until success or the user cancels.
       while (true) {
         const creds = await collectCredentials(prefill);
-        if (creds === undefined) return; // user cancelled the form
+        if (creds === undefined) return;
 
         const validationError = validateCredentials(creds);
         if (validationError) {
@@ -26,7 +72,6 @@ export function registerConfigureCredentials(context: vscode.ExtensionContext): 
           continue;
         }
 
-        // FR-002: Show a progress indicator during the live connection test.
         const result = await vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
@@ -37,24 +82,35 @@ export function registerConfigureCredentials(context: vscode.ExtensionContext): 
         );
 
         if (result.ok) {
-          // FR-003: Save on success and notify the user.
-          await writeCredentials(creds);
-          void vscode.window.showInformationMessage(
-            'ADX connection configured and verified successfully.'
-          );
+          await writeConnection(connectionName, creds);
+          const isAlreadyActive = store?.activeConnection === connectionName;
+
+          if (isAlreadyActive) {
+            void vscode.window.showInformationMessage(
+              `ADX connection "${connectionName}" updated successfully.`
+            );
+            await onConnectionActivated?.();
+          } else {
+            const setActive = await vscode.window.showInformationMessage(
+              `Connection "${connectionName}" saved. Set as active connection?`,
+              'Yes',
+              'No'
+            );
+            if (setActive === 'Yes') {
+              await setActiveConnection(connectionName);
+              await onConnectionActivated?.();
+            }
+          }
           return;
         }
 
-        // FR-004 / FR-005 / FR-006: On failure do NOT save; offer Retry or Cancel.
+        // On failure do NOT save; offer Retry or Cancel.
         const choice = await vscode.window.showErrorMessage(
           result.message,
           'Retry',
           'Cancel'
         );
-
-        if (choice !== 'Retry') return; // 'Cancel' or dismissed — exit without saving
-
-        // Pre-fill the retry form with the credentials that just failed.
+        if (choice !== 'Retry') return;
         prefill = creds;
       }
     }
@@ -64,10 +120,7 @@ export function registerConfigureCredentials(context: vscode.ExtensionContext): 
 }
 
 /**
- * Walks the user through the four-step credential input sequence.
- * Accepts optional pre-fill values so the form can be re-opened after a
- * failed connection attempt with the previously entered data intact.
- *
+ * Walks the user through the credential input sequence.
  * Returns undefined if the user cancels any step.
  */
 async function collectCredentials(
@@ -119,7 +172,6 @@ async function collectCredentials(
   });
   if (rawSecret === undefined) return undefined;
 
-  // If the user left the placeholder or blank but an existing secret is available, retain it.
   const clientSecret =
     rawSecret === '' || rawSecret === '***'
       ? existingSecret ?? rawSecret
@@ -134,13 +186,7 @@ async function collectCredentials(
   });
   if (defaultDatabase === undefined) return undefined;
 
-  return {
-    clusterUrl,
-    tenantId,
-    clientId,
-    clientSecret,
-    defaultDatabase,
-  };
+  return { clusterUrl, tenantId, clientId, clientSecret, defaultDatabase };
 }
 
 interface PromptOptions {

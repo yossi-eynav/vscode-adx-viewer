@@ -1,17 +1,35 @@
 import * as vscode from 'vscode';
 import { registerConfigureCredentials } from './commands/configureCredentials';
+import { registerSwitchConnection } from './commands/switchConnection';
 import { registerAdxDocumentProvider } from './providers/adxDocumentProvider';
 import { registerDefineVariable, registerConfigureVariable } from './commands/manageVariables';
-import { readCredentials } from './services/credentialService';
+import { readCredentials, getActiveConnectionName } from './services/credentialService';
 import { getVariables, getActiveFilters } from './services/variableService';
 import { PanelManager } from './webview/panelManager';
 
 export function activate(context: vscode.ExtensionContext): void {
-  registerConfigureCredentials(context);
   const panelManager = new PanelManager(context.extensionUri, context.globalState);
   registerAdxDocumentProvider(context, panelManager);
 
-  // ── Status bar ────────────────────────────────────────────────────────────
+  // ── Connection status bar ─────────────────────────────────────────────────
+  const connectionBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 101);
+  connectionBar.command = 'adxViewer.switchConnection';
+  context.subscriptions.push(connectionBar);
+
+  async function refreshConnectionBar(): Promise<void> {
+    const name = await getActiveConnectionName();
+    if (name) {
+      connectionBar.text = `$(plug) ${name}`;
+      connectionBar.tooltip = `Active ADX connection: ${name}. Click to switch.`;
+    } else {
+      connectionBar.text = '$(plug) ADX: no connection';
+      connectionBar.tooltip = 'No ADX connection configured. Run "ADX: Add / Edit Connection".';
+    }
+    connectionBar.show();
+  }
+  void refreshConnectionBar();
+
+  // ── Variable status bar ───────────────────────────────────────────────────
   const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
   statusBar.command = 'adxViewer.configureVariable';
   context.subscriptions.push(statusBar);
@@ -35,10 +53,24 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   refreshStatusBar();
 
+  // ── Credentials command ───────────────────────────────────────────────────
+  registerConfigureCredentials(context, async () => {
+    void refreshConnectionBar();
+    const creds = await readCredentials();
+    if (creds) panelManager.reloadAll(creds);
+  });
+
+  // ── Switch connection command ─────────────────────────────────────────────
+  registerSwitchConnection(context, async (creds) => {
+    void refreshConnectionBar();
+    panelManager.reloadAll(creds);
+  });
+
   // ── Variable commands ─────────────────────────────────────────────────────
   const onVariablesChanged = (): void => {
     refreshStatusBar();
     panelManager.broadcastConfig();
+    void readCredentials().then(creds => { if (creds) panelManager.reloadAll(creds); });
   };
 
   registerDefineVariable(context, onVariablesChanged);
@@ -54,7 +86,7 @@ export function activate(context: vscode.ExtensionContext): void {
     const credentials = await readCredentials();
     if (!credentials) {
       const action = await vscode.window.showErrorMessage(
-        "ADX credentials not configured. Run 'ADX: Configure Connection' to set up.",
+        "ADX credentials not configured. Run 'ADX: Add / Edit Connection' to set up.",
         'Configure Now'
       );
       if (action === 'Configure Now') {
@@ -74,27 +106,6 @@ export function activate(context: vscode.ExtensionContext): void {
   );
   context.subscriptions.push(
     vscode.commands.registerCommand('adxViewer.showGraph', () => openKustoPanel('graph'))
-  );
-
-  // ── JSON columns command ──────────────────────────────────────────────────
-  context.subscriptions.push(
-    vscode.commands.registerCommand('adxViewer.configureJsonColumns', async () => {
-      const config = vscode.workspace.getConfiguration('adxViewer');
-      const current = config.get<string[]>('jsonColumns', ['customDimensions']);
-      const input = await vscode.window.showInputBox({
-        title: 'Configure JSON Columns',
-        prompt: 'Comma-separated list of column names to render as JSON',
-        value: current.join(', '),
-        placeHolder: 'customDimensions, details',
-      });
-      if (input === undefined) return;
-      const jsonColumns = input
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-      await config.update('jsonColumns', jsonColumns, vscode.ConfigurationTarget.Global);
-      vscode.window.showInformationMessage(`JSON columns updated: ${jsonColumns.join(', ') || '(none)'}`);
-    })
   );
 }
 

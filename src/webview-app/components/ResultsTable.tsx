@@ -29,10 +29,9 @@ function toRowData(columns: ResultColumn[], rows: ResultRow[]): RowData[] {
 interface Props {
   columns: ResultColumn[];
   rows: ResultRow[];
-  jsonColumns: string[];
 }
 
-export function ResultsTable({ columns, rows, jsonColumns }: Props) {
+export function ResultsTable({ columns, rows }: Props) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [filterText, setFilterText] = useState('');
   const [groupByColumn, setGroupByColumn] = useState<string>('');
@@ -75,10 +74,10 @@ export function ResultsTable({ columns, rows, jsonColumns }: Props) {
               return (isNaN(a) ? -Infinity : a) - (isNaN(b) ? -Infinity : b);
             }
           : 'auto',
-        cell: info => <CellValue value={info.getValue()} isJsonColumn={jsonColumns.includes(col.name)} />,
+        cell: info => <CellValue value={info.getValue()} isJsonColumn={col.type === ColumnType.dynamic} />,
       })
     ),
-    [columns, jsonColumns] // eslint-disable-line react-hooks/exhaustive-deps
+    [columns] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const table = useReactTable({

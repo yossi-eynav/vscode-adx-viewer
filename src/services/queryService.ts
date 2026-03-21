@@ -117,7 +117,8 @@ export async function testConnection(credentials: ADXCredentials): Promise<Valid
 export async function executeQuery(
   credentials: ADXCredentials,
   queryText: string,
-  database: string
+  database: string,
+  queryParameters?: Record<string, string>
 ): Promise<QueryResult> {
   if (!queryText.trim()) {
     throw new EmptyQueryError();
@@ -138,7 +139,7 @@ export async function executeQuery(
     const client = new Client(kcsb);
 
     const queryStart = Date.now();
-    const result = await executeWithTimeout(client, database, queryText, 30000);
+    const result = await executeWithTimeout(client, database, queryText, 30000, queryParameters);
     const queryDurationMs = Date.now() - queryStart;
 
     const primaryTable = result.primaryResults[0];
@@ -221,13 +222,17 @@ async function executeWithTimeout(
   client: Client,
   database: string,
   query: string,
-  timeoutMs: number
+  timeoutMs: number,
+  queryParameters?: Record<string, string>
 ): Promise<ReturnType<Client['execute']>> {
   const props = new ClientRequestProperties();
   // Allow up to 256 MB result sets (default is 64 MB)
   props.setOption('truncationmaxsize', 256 * 1024 * 1024);
   // Allow up to 500 000 records (default is 500 000, kept explicit for clarity)
   props.setOption('truncationmaxrecords', 500_000);
+  for (const [name, value] of Object.entries(queryParameters ?? {})) {
+    props.setParameter(name, value);
+  }
 
   const timeoutPromise = new Promise<never>((_, reject) =>
     setTimeout(
