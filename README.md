@@ -31,7 +31,9 @@ A VS Code extension for running KQL queries against Azure Data Explorer directly
 
 - VS Code 1.74+
 - An Azure Data Explorer cluster
-- A service principal with **Viewer** (or higher) permissions on the target database
+- One of the following for authentication:
+  - A service principal with **Viewer** (or higher) permissions on the target database, **or**
+  - An active [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/) login (`az login`) with access to the cluster
 
 ---
 
@@ -56,7 +58,18 @@ Before running any query you must configure at least one connection. Open the Co
 ADX: Add / Edit Connection
 ```
 
-You will be walked through a 5-step prompt:
+After entering the cluster URL you will be asked to choose an authentication method:
+
+**Option A — Azure CLI** (2 steps total):
+
+| Step | Field | Example |
+|---|---|---|
+| 1 | Cluster URL | `https://mycluster.eastus.kusto.windows.net` |
+| 2 | Default database | `MyDatabase` |
+
+Requires an active `az login` session. No credentials are stored — the extension uses the Azure CLI token at query time.
+
+**Option B — Client Secret / Service Principal** (5 steps total):
 
 | Step | Field | Example |
 |---|---|---|
@@ -66,7 +79,7 @@ You will be walked through a 5-step prompt:
 | 4 | Client Secret | *(masked input)* |
 | 5 | Default database | `MyDatabase` |
 
-The credentials are validated against the live cluster before being saved. If validation fails you can retry or cancel. When editing an existing connection the secret field is pre-filled with `***` — leave it unchanged to keep the existing secret.
+The connection is validated against the live cluster before being saved. If validation fails you can retry or cancel. When editing an existing connection the secret field is pre-filled with `***` — leave it unchanged to keep the existing secret.
 
 ---
 
@@ -88,6 +101,7 @@ File structure:
   "connections": {
     "prod": {
       "clusterUrl": "https://mycluster.eastus.kusto.windows.net",
+      "authMethod": "clientSecret",
       "tenantId": "...",
       "clientId": "...",
       "clientSecret": "...",
@@ -95,14 +109,14 @@ File structure:
     },
     "staging": {
       "clusterUrl": "https://stagingcluster.eastus.kusto.windows.net",
-      "tenantId": "...",
-      "clientId": "...",
-      "clientSecret": "...",
+      "authMethod": "azureCli",
       "defaultDatabase": "StagingDB"
     }
   }
 }
 ```
+
+`authMethod` is `"clientSecret"` or `"azureCli"`. Connections saved before this field was introduced default to `"clientSecret"`.
 
 Query variable definitions and their selected values are stored separately in **VS Code global state** (not in this file).
 
@@ -149,22 +163,7 @@ The extension registers **Kusto Query Language** as a VS Code language for the `
 
 ### Syntax Highlighting
 
-`.kusto` files receive full KQL syntax highlighting automatically when opened in VS Code.
-
-| Category | Keywords |
-|---|---|
-| Tabular operators | `where` `summarize` `project` `project-away` `project-rename` `extend` `join` `union` `take` `limit` `top` `sort` `order` `distinct` `count` `search` `parse` `mv-expand` `mv-apply` `evaluate` `render` `make-series` `invoke` `getschema` `sample` `reduce` `fork` `facet` `print` `datatable` `range` `serialize` `partition` `lookup` `aggregate` |
-| Aggregation functions | `sum` `avg` `min` `max` `count` `dcount` `any` `arg_max` `arg_min` `make_list` `make_set` `percentile` `stdev` `variance` `hll` `tdigest` `buildschema` `take_any` and their conditional variants |
-| Scalar functions | `ago` `now` `bin` `format_datetime` `parse_json` `iif` `case` `coalesce` `tostring` `toint` `tolong` `todouble` `tobool` `todatetime` `extract` `split` `strcat` `substring` `trim` `replace` `indexof` `countof` `hash` `isempty` `isnull` `isnotnull` `ingestion_time` and many more |
-| String operators | `has` `has_cs` `has_any` `has_all` `contains` `startswith` `endswith` `matches regex` `in` `!in` `between` `!between` and their variants |
-| Logical operators | `and` `or` `not` |
-| Type names | `string` `int` `long` `real` `double` `decimal` `bool` `datetime` `timespan` `dynamic` `guid` |
-| Statements | `let` `declare` `set` |
-| Clause keywords | `by` `on` `with` `asc` `desc` `nulls first` `nulls last` `kind` `inner` `outer` `left` `right` `fullouter` `cluster` `database` |
-| Literals | strings, numbers, hex, timespan values (`1h`, `30m`, `1d`, …), `true`, `false`, `null` |
-| Comments | `// line comments` |
-
-Also included: bracket matching, auto-close pairs for `()`, `[]`, `{}`, `""`, `''`, comment toggling with `Ctrl+/` / `Cmd+/`, and smart pipe-aware indentation.
+`.kusto` files receive full KQL syntax highlighting automatically when opened in VS Code, covering tabular operators, aggregation and scalar functions, string/logical operators, type names, literals, and comments. Also included: bracket matching, auto-close pairs, comment toggling, and smart pipe-aware indentation.
 
 ---
 
@@ -177,7 +176,7 @@ Multiple named connections can be configured (e.g. `prod`, `staging`, `dev`).
 | `ADX: Add / Edit Connection` | Create a new connection or edit an existing one |
 | `ADX: Switch Connection` | Choose which connection is active |
 
-**Add / Edit:** If connections already exist, a picker lets you select one to edit or choose "New connection…". The 5-step wizard pre-fills existing values. A live connection test runs before saving — credentials are never saved if the test fails.
+**Add / Edit:** If connections already exist, a picker lets you select one to edit or choose "New connection…". After entering the cluster URL, choose an authentication method: **Azure CLI** (2 steps) or **Client Secret** (5 steps). The wizard pre-fills existing values when editing. A live connection test runs before saving — credentials are never saved if the test fails.
 
 **Switch connection:** A quick-pick lists all connections with a checkmark on the active one and the cluster URL shown as a description. Picking a different connection immediately re-runs all open result panels against it.
 

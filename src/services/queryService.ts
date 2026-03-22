@@ -1,5 +1,5 @@
 import { Client, KustoConnectionStringBuilder, ClientRequestProperties } from 'azure-kusto-data';
-import { ClientSecretCredential } from '@azure/identity';
+import { ClientSecretCredential, AzureCliCredential } from '@azure/identity';
 import { ResultColumn, ResultRow, ColumnType } from '../types/messages';
 import { ADXCredentials } from './credentialService';
 import { mapColumnType } from '../webview/resultTransformer';
@@ -33,6 +33,17 @@ export class EmptyQueryError extends Error {
 }
 
 
+
+function buildCredential(credentials: ADXCredentials): ClientSecretCredential | AzureCliCredential {
+  if (credentials.authMethod === 'azureCli') {
+    return new AzureCliCredential();
+  }
+  return new ClientSecretCredential(
+    credentials.tenantId!,
+    credentials.clientId!,
+    credentials.clientSecret!
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Credential validation (US1)
@@ -84,11 +95,7 @@ function classifyConnectionError(err: unknown): ValidationResult {
 
 export async function testConnection(credentials: ADXCredentials): Promise<ValidationResult> {
   try {
-    const credential = new ClientSecretCredential(
-      credentials.tenantId,
-      credentials.clientId,
-      credentials.clientSecret
-    );
+    const credential = buildCredential(credentials);
 
     const kcsb = KustoConnectionStringBuilder.withTokenCredential(
       credentials.clusterUrl,
@@ -125,11 +132,7 @@ export async function executeQuery(
   }
 
   try {
-    const credential = new ClientSecretCredential(
-      credentials.tenantId,
-      credentials.clientId,
-      credentials.clientSecret
-    );
+    const credential = buildCredential(credentials);
 
     const kcsb = KustoConnectionStringBuilder.withTokenCredential(
       credentials.clusterUrl,

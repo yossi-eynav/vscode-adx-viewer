@@ -1,3 +1,4 @@
 exceptions
 | where timestamp > ago(1h) 
+| where aidoc_site == ""
 | where source  == "dr-strange"

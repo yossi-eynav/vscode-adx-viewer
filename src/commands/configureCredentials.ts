@@ -5,6 +5,7 @@ import {
   setActiveConnection,
   validateCredentials,
   ADXCredentials,
+  AuthMethod,
 } from '../services/credentialService';
 import { testConnection } from '../services/queryService';
 
@@ -139,6 +140,36 @@ async function collectCredentials(
   });
   if (clusterUrl === undefined) return undefined;
 
+  const authMethodItems: vscode.QuickPickItem[] = [
+    {
+      label: 'Client Secret (Service Principal)',
+      description: 'Authenticate with tenant ID, client ID, and client secret',
+    },
+    {
+      label: 'Azure CLI',
+      description: 'Use your active Azure CLI login (az login)',
+    },
+  ];
+  const authPick = await vscode.window.showQuickPick(authMethodItems, {
+    title: 'ADX: Configure Connection — Authentication Method',
+    placeHolder: 'Select authentication method',
+  });
+  if (!authPick) return undefined;
+
+  const authMethod: AuthMethod = authPick.label === 'Azure CLI' ? 'azureCli' : 'clientSecret';
+
+  if (authMethod === 'azureCli') {
+    const defaultDatabase = await promptStep({
+      title: 'ADX: Configure Connection (2 / 2)',
+      prompt: 'Enter the default database name',
+      placeholder: 'MyDatabase',
+      value: prefill?.defaultDatabase ?? '',
+      validateInput: (v) => (v ? null : 'Default database is required'),
+    });
+    if (defaultDatabase === undefined) return undefined;
+    return { clusterUrl, authMethod, defaultDatabase };
+  }
+
   const tenantId = await promptStep({
     title: 'ADX: Configure Connection (2 / 5)',
     prompt: 'Enter your Azure AD Tenant ID',
@@ -186,7 +217,7 @@ async function collectCredentials(
   });
   if (defaultDatabase === undefined) return undefined;
 
-  return { clusterUrl, tenantId, clientId, clientSecret, defaultDatabase };
+  return { clusterUrl, authMethod, tenantId, clientId, clientSecret, defaultDatabase };
 }
 
 interface PromptOptions {
