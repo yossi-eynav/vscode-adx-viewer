@@ -2,7 +2,7 @@
   "name": "adx-vscode-viewer",
   "displayName": "ADX Query Viewer",
   "description": "View Azure Data Explorer KQL query results directly in VS Code",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "yossi-eynav",
   "engines": {
     "vscode": "^1.74.0"
