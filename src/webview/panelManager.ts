@@ -103,7 +103,7 @@ export class PanelManager {
     const queryText = document.getText();
     const variables = getVariables(this.globalState);
     const activeFilters = getActiveFilters(variables);
-    const queryParameters = Object.fromEntries(activeFilters.map(f => [`${f.name}_query`, f.value]));
+    const queryParameters = Object.fromEntries(activeFilters.map(f => [f.name, f.value]));
     const database = credentials.defaultDatabase ?? '';
 
     try {

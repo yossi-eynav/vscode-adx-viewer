@@ -340,7 +340,7 @@ There are **two commands** and they must be used in order:
 Command Palette → `ADX: Define Query Variable`
 
 **Name prompt:** Enter a variable name using only letters, digits, and underscores (e.g. `environment`).
-This name is used as the KQL parameter name with `_query` appended automatically:
+This name is used directly as the KQL parameter name:
 
 | Variable name | KQL parameter injected |
 |---|---|
@@ -374,7 +374,7 @@ As soon as a value is selected, all open result panels re-execute with the new p
 
 #### Step 3 — Use the variable in your query
 
-In your `.kusto` file, declare the parameter using `declare query_parameters` and reference it in the query body. The parameter name must match the variable name with `_query` appended.
+In your `.kusto` file, declare the parameter using `declare query_parameters` and reference it in the query body. The parameter name must match the variable name exactly.
 
 ```kusto
 declare query_parameters(
@@ -426,20 +426,20 @@ The `declare query_parameters` block sets the **default values** that are used w
 
 ### Wiring it up
 
-**1. Define `timeframe_start`** (`ADX: Define Query Variable`):
-- Name: `timeframe_start` → injects as `timeframe_start_query`
+**1. Define `timeframe_start_query`** (`ADX: Define Query Variable`):
+- Name: `timeframe_start_query`
 - Source: **Fixed values** → `1h,4h,12h,1d,7d`
 
-**2. Define `timeframe_end`** (`ADX: Define Query Variable`):
-- Name: `timeframe_end` → injects as `timeframe_end_query`
+**2. Define `timeframe_end_query`** (`ADX: Define Query Variable`):
+- Name: `timeframe_end_query`
 - Source: **Fixed values** → `0,1h,6h,1d`
 
-**3. Define `my_column`** (`ADX: Define Query Variable`):
-- Name: `my_column` → injects as `my_column_query`
+**3. Define `my_column_query`** (`ADX: Define Query Variable`):
+- Name: `my_column_query`
 - Source: **KQL query** → `exceptions | distinct myColumn | order by myColumn asc`
 - The options list is fetched live from ADX each time you open the picker
 
-**4. Set values** (`ADX: Configure Query Variable`): pick `4h` for `timeframe_start`, `0` for `timeframe_end`, and leave `my_column` unset to return all values.
+**4. Set values** (`ADX: Configure Query Variable`): pick `4h` for `timeframe_start_query`, `0` for `timeframe_end_query`, and leave `my_column_query` unset to return all values.
 
 **5. Save the `.kusto` file** — the extension injects `timeframe_start_query = "4h"` and `timeframe_end_query = "0"` and re-runs the query.
 

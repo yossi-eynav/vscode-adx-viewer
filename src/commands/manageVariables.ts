@@ -16,7 +16,7 @@ export function registerDefineVariable(
 
       const name = await vscode.window.showInputBox({
         title: 'Define Query Variable (1 / 2)',
-        prompt: 'Variable name — used as the KQL query parameter name (with _query suffix)',
+        prompt: 'Variable name — used as the KQL query parameter name',
         placeHolder: 'query_name',
         ignoreFocusOut: true,
         validateInput: v => {
